@@ -8,11 +8,16 @@ public class FollowTargets : MonoBehaviour
     public float followDistance;
     public float farDamp;
     public float closeDamp;
+    public Stack<List<Transform>> focusStack = new Stack<List<Transform>>();
 
     private Camera _camera;
 
     public void Focus(Transform t) {
-        targets = new List<Transform>() { t }; 
+        targets = new List<Transform>() { t };
+    }
+
+    public void Focus(List<Transform> t) {
+        targets = t;
     }
 
     void Start()

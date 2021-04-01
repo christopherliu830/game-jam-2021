@@ -7,9 +7,11 @@ public class CharController : MonoBehaviour
 
     public CharController partner;
     public float maxSeparation = 2f;
+    public float followDistance = 2f;
     [HideInInspector]
     public bool updates = true;
     public bool Focused => _focused;
+    public bool inputsEnabled = true;
     public Vector2 Position { get => _position; set => _position = value; }
     public Vector2 Velocity { get => _velocity; set => _velocity = value; }
 
@@ -21,7 +23,6 @@ public class CharController : MonoBehaviour
     public float acceleration = 2f;
     public float speedDecayRate = 0.9f;
     public LayerMask blockedBy;
-
 
     private Vector2 _velocity;
     private Vector2 _position;
@@ -39,6 +40,7 @@ public class CharController : MonoBehaviour
     private ContactPoint2D[] _contacts = new ContactPoint2D[4];
 
     void Awake() {
+        followDistance = maxSeparation;
         _position = transform.position;
         _jumpFramesLeft = jumpFrames;
         _climbFramesLeft = climbFrames;
@@ -48,61 +50,59 @@ public class CharController : MonoBehaviour
     }
 
     void Update() {
-        if (Input.GetKeyDown(KeyCode.Space)) {
-            _spacePressed = true;
-        }
         if (Input.GetKeyUp(KeyCode.Space)) {
             _spacePressed = false;
             if (!IsGrounded()) _jumpFramesLeft = 0;
         }
-        if (_focused && Input.GetMouseButtonUp(1)) {
-            Vector2 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            if (Vector3.Distance(partner.Position, _position) < 0.2f) {
-                partner.Throw((pos - Position).normalized);
-            }
+        if (!inputsEnabled) return;
+        if (Input.GetKeyDown(KeyCode.Space)) {
+            _spacePressed = true;
         }
-        if (!_focused && Input.GetMouseButton(1)) {
-            if (Vector3.Distance(partner.Position, _position) < 1.0f) {
-                _position = partner.Position;
-                _velocity = Vector2.zero;
-            } else {
-                _velocity = (partner.Position - _position).normalized / 5f; 
+        if (_focused) {
+            if (Input.GetMouseButtonUp(0)) {
+                Vector2 pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                if (Vector3.Distance(partner.Position, _position) < 1.0f) {
+                    partner.Throw((pos - Position).normalized);
+                } 
+            }
+            if (Input.GetMouseButton(0)) {
+                if (Vector3.Distance(partner.Position, _position) < 1.0f) {
+                    partner.Position = _position;
+                    partner._velocity = Vector2.zero;
+                }
+            }
+            if (Input.GetMouseButton(1)) {
+                if (Vector3.Distance(partner.Position, _position) < 1.0f) {
+                    partner.Position = _position;
+                    partner._velocity = Vector2.zero;
+                } else {
+                    partner._velocity = (_position - partner._position).normalized / 5f; 
+                }
             }
         }
     }
-
     void FixedUpdate()
     {
+        if (!inputsEnabled) return;
         float dx = Input.GetAxisRaw("Horizontal");
         float dy = Input.GetAxisRaw("Vertical");
-        bool grounded = IsGrounded();
 
-        _velocity.y += GameManager.GRAVITY * Time.fixedDeltaTime;
-        if (_velocity.y < -20) _velocity.y = -20;
-
-        if (_focused) {
-            _velocity.x += dx * acceleration;
-        } else {
-            dx = dy = 0;
-            _spacePressed = false;
+        bool space = _spacePressed;
+        if (!_focused) {
+            (dx, space) = AI();
         }
+        Move(dx, dy, space);
+    }
+
+    public void Move(float dx, float dy, bool space) {
+        bool grounded = IsGrounded();
+        _velocity.y += GameManager.GRAVITY * Time.fixedDeltaTime;
+        if (_velocity.y < -1) _velocity.y = -1; // Cap fall speed
+
+        _velocity.x += dx * acceleration;
 
         if (grounded) {
             _velocity.x *= speedDecayRate;
-        }
-
-        int dir = IsOnWall();
-        if (_focused && dir != 0 && _climbFramesLeft > 0) {
-            _velocity.y = dy * maxSpeed / 2;
-            _velocity.x = dir;
-            _climbFramesLeft--;
-
-            // Give an extra boost at cliffs
-            _position.y += 0.2f;
-            if (IsOnWall() == 0) {  
-                _velocity.y = jumpForce;
-            }
-            _position.y -= 0.2f;
         }
 
         if (grounded) {
@@ -110,20 +110,20 @@ public class CharController : MonoBehaviour
                 _velocity.y = -0.1f;
                 _thrown = false;
             }
-            if (_spacePressed) {
+            if (space) {
                 _velocity.y = jumpForce;
                 _jumpFramesLeft--;
             } else {
                 _jumpFramesLeft = jumpFrames;
                 _climbFramesLeft = climbFrames;
             }
-        } else if (_spacePressed && _jumpFramesLeft > 0)  {
+        } else if (space && _jumpFramesLeft > 0)  {
             _velocity.y += jumpForce * ( 1 - (jumpFrames - _jumpFramesLeft) / (float)jumpFrames ) / 2f;
             _jumpFramesLeft--;
         }
 
         if (_jumpFramesLeft == 0) {
-            _spacePressed = false;
+            space = false;
         }
 
         if (Mathf.Abs(_velocity.x) > maxSpeed) {
@@ -133,13 +133,9 @@ public class CharController : MonoBehaviour
         if (_focused || !grounded) {
             _velocity = ClampVelocity(_velocity);
         }
-        Debug.DrawRay(_position, _velocity, Color.white, 1, false);
         _position = MoveWithCollision(_position, _velocity);
-        transform.position = _position;
-
-
+        _rb.MovePosition(_position);
     }
-
     public void Focus() {
         _focused = true;
     }
@@ -148,7 +144,8 @@ public class CharController : MonoBehaviour
     }
 
     public bool IsGrounded() {
-        RaycastHit2D hit = Physics2D.CapsuleCast(_position, _collider.size, CapsuleDirection2D.Vertical, 0, Vector2.down, 0.1f, blockedBy);
+        Vector2 size = new Vector2(_collider.size.x / 5f, _collider.size.y);
+        RaycastHit2D hit = Physics2D.CapsuleCast(_position, size, CapsuleDirection2D.Vertical, 0, Vector2.down, 0.1f, blockedBy);
         return hit.collider != null;
     }
 
@@ -158,14 +155,50 @@ public class CharController : MonoBehaviour
     }
 
     public int IsOnWall() {
-        float extent = _collider.bounds.extents.x;
-        RaycastHit2D hit = Physics2D.BoxCast(_position + Vector2.left * 0.1f, _collider.size, 0, Vector2.left, Mathf.Epsilon, blockedBy);
+        RaycastHit2D hit = Physics2D.BoxCast(_position + new Vector2(-0.1f, 0.5f), _collider.size, 0, Vector2.left, Mathf.Epsilon, blockedBy);
         if (hit.collider != null) return -1;
 
-        hit = Physics2D.BoxCast(_position + Vector2.right * 0.1f, _collider.size, 0, Vector2.right, Mathf.Epsilon, blockedBy);
+        hit = Physics2D.BoxCast(_position + new Vector2(0.1f, 0.5f), _collider.size, 0, Vector2.right, Mathf.Epsilon, blockedBy);
         if (hit.collider != null) return 1;
 
         return 0;
+    }
+
+    public int IsOnLedge() {
+        if (IsOnWall() == 0) return 0;
+        RaycastHit2D hit = Physics2D.BoxCast(_position + new Vector2(-0.1f, _collider.size.y), _collider.size, 0, Vector2.left, Mathf.Epsilon, blockedBy);
+        if (hit.collider == null) return -1;
+
+        hit = Physics2D.BoxCast(_position + new Vector2(0.1f, _collider.size.y), _collider.size, 0, Vector2.right, Mathf.Epsilon, blockedBy);
+        if (hit.collider == null) return 1;
+
+        return 0;
+
+    }
+
+    (float, bool) AI() {
+        float dx = 0;
+        bool space =  false;
+
+        if (Mathf.Abs(Position.x - partner.Position.x) > followDistance * 0.75f) {
+            dx = Mathf.Sign(partner.Position.x - Position.x);
+            space = IsOnLedge() != 0 && IsGrounded() && partner.IsGrounded() && partner.Position.y - Position.y > 0.75f;
+        }
+
+        // Attempt jump if partner is higher up
+        return (dx, space);
+    }
+
+    public IEnumerator MoveTo(Vector2 position, float timeout) {
+        float timer = 0;
+        while (timer < timeout) {
+            timer += Time.fixedDeltaTime;
+            float dx = Mathf.Sign(position.x - Position.x);
+            bool space = IsOnLedge() != 0 && IsGrounded() && position.y - Position.y > 0.75f;
+            Move(dx, 0, space);
+            yield return new WaitForFixedUpdate();
+        }
+        yield return null;
     }
 
     Vector2 ClampVelocity(Vector2 vel) {
@@ -178,38 +211,30 @@ public class CharController : MonoBehaviour
             Vector2 ret = edge - pos;
             float damp = 0.1f;
             if (!_focused) damp = 1;
-            return Vector2.Lerp(vel, ret, damp);
+            return ret;
+            // return Vector2.Lerp(vel, ret, damp);
         }
 
         return vel;
     }
-    Vector2 MoveWithCollision(Vector2 pos, Vector2 v) {
-
-        Vector2 dy = new Vector2(0, v.y);
-        Vector2 dx = new Vector2(v.x, 0);
-        pos = MoveInDirection(pos, v, true);
-        return pos;
-    }
-
-    Vector2 MoveInDirection(Vector2 position, Vector2 dir, bool isHorizontal) {
+    Vector2 MoveWithCollision(Vector2 position, Vector2 dir) {
         Vector2 pos = new Vector2(position.x, position.y);
-
 
         RaycastHit2D hit = Physics2D.CapsuleCast(pos, _collider.size, CapsuleDirection2D.Vertical, 0, dir, dir.magnitude, blockedBy);
         if (hit.collider == null) { return position + dir; }
         var dot = Vector2.Dot(dir, hit.normal);
 
-        int i = 0;
+        int i = 0; // Failsafe :)
         while (hit.collider != null && i < 1000) {
-            Debug.DrawRay(pos, hit.normal, Color.red, 1, false);
             hit = Physics2D.CapsuleCast(pos, _collider.size, CapsuleDirection2D.Vertical, 0, Vector2.zero, Mathf.Infinity, blockedBy);
-            pos += hit.normal * 0.01f;
+            Debug.DrawRay(pos, hit.normal, Color.red, 1, false);
+            if (Vector2.Dot(Vector2.up, hit.normal) > 0.8f)  {
+                hit.normal = Vector2.up;
+            }
+            pos += hit.normal * 0.015f;
             i++;
         } 
-
-
         pos += dir;
-
         return pos;
     }
 }

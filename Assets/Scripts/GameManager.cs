@@ -6,7 +6,8 @@ using UnityEngine.SceneManagement;
 public class GameManager : MonoBehaviour
 {
     public static readonly float GRAVITY = -3f;
-    public float ropeDistance = 12f;
+    public static float ROPE_LENGTH = 12f;
+    public static GameManager instance ;
     public Material ropeMaterial;
     public CharController[] characters;
     
@@ -14,16 +15,17 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+
+        if (instance == null) {
+            instance = this;
+        } else Debug.LogError("Multiple " + this);
+
         characters[_currentCharacterIndex].Focus();
-        characters[0].maxSeparation = ropeDistance;
-        characters[1].maxSeparation = ropeDistance;
+        characters[0].maxSeparation = Mathf.Infinity;
+        characters[1].maxSeparation = Mathf.Infinity;
+        characters[1].followDistance = 4f;
         characters[0].partner = characters[1];
         characters[1].partner = characters[0];
-        HingeJointConnect.Connect(
-            characters[0].GetComponent<Rigidbody2D>(), 
-            characters[1].GetComponent<Rigidbody2D>(), 20, 5)
-            .GetComponent<LineRenderer>().sharedMaterial = ropeMaterial;
-
     }
 
 
@@ -34,7 +36,8 @@ public class GameManager : MonoBehaviour
             characters[_currentCharacterIndex].Unfocus();
             _currentCharacterIndex = (_currentCharacterIndex + 1) % characters.Length;
             characters[_currentCharacterIndex].Focus();
-            Camera.main.GetComponent<FollowTargets>().Focus(characters[_currentCharacterIndex].transform);
+            var c = Camera.main.GetComponent<FollowTargets>();
+            c.Focus(characters[_currentCharacterIndex].transform);
         }
 
         if (Input.GetKeyDown(KeyCode.R)) {
