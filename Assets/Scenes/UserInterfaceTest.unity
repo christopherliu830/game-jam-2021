@@ -407,7 +407,7 @@ GameObject:
   - component: {fileID: 820252450}
   - component: {fileID: 820252454}
   m_Layer: 5
-  m_Name: Cutscene
+  m_Name: Dialogue
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -506,6 +506,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4be6a26435daea449a59d40d8d4ea95d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  path_to_dialogue_files: Blah
+  dialogue_box: {fileID: 2121795961}
+  character_name_box: {fileID: 533777348}
+  character_speech_box: {fileID: 275012326}
 --- !u!1 &1013444832
 GameObject:
   m_ObjectHideFlags: 0

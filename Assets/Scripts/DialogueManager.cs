@@ -7,6 +7,7 @@ using TMPro;
 public class DialogueManager : MonoBehaviour
 {
     [Tooltip("Folder that stores the dialogue files -- should be located under Resources")][SerializeField] private string path_to_dialogue_files;
+    [SerializeField] private GameObject dialogue_box = null;
     [Tooltip("Where the character's name should be displayed on the UI")][SerializeField] private TextMeshProUGUI character_name_box = null;
     [Tooltip("Where the character's speech should be displayed on the UI")][SerializeField] private TextMeshProUGUI character_speech_box = null;
     
@@ -21,7 +22,6 @@ public class DialogueManager : MonoBehaviour
         if (_instance != null & _instance != this) Destroy(this.gameObject);
         else _instance = this;
         dialogue_files = GetDialogueFiles(path_to_dialogue_files);
-        StartCoroutine(PlayDialogue(0));
     }
     
     // Get files from a subfolder under Resources
@@ -73,18 +73,18 @@ public class DialogueManager : MonoBehaviour
             yield return null;
         }
         string[] lines = GetLines(dialogue_files[index]);
+        DisplayDialogueBox(true);
         foreach (string line in lines)
         {
             string[] tokens = TokenizeLine(line, '\t');
             yield return StartCoroutine(UpdateDialogueBox(tokens));
         }
         ClearDialogueBox();
+        DisplayDialogueBox(false);
     }
     
     private IEnumerator UpdateDialogueBox(string[] tokens)
     {
-        Debug.Log(tokens[0]);
-        Debug.Log(tokens[1]);
         do
         {
             character_name_box.text = tokens[0];
@@ -98,5 +98,10 @@ public class DialogueManager : MonoBehaviour
     {
         character_name_box.text = "";
         character_speech_box.text = "";
+    }
+    
+    public void DisplayDialogueBox(bool display)
+    {
+        dialogue_box.SetActive(display);
     }
 }
