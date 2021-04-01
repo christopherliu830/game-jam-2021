@@ -91,7 +91,7 @@ public class DialogueManager : MonoBehaviour
             character_speech_box.text = tokens[1];
             yield return null;
         }
-        while (!Input.GetKeyDown(KeyCode.Mouse0) && !Input.GetKey(KeyCode.Mouse1)); 
+        while (!Input.GetKeyDown(KeyCode.Mouse0)); 
     }
     
     public void ClearDialogueBox()
