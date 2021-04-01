@@ -2,7 +2,9 @@
     "name": "ropegame",
     "rootNamespace": "",
     "references": [
-        "GUID:39d2ed2251acf274594404e8a171d126"
+        "GUID:39d2ed2251acf274594404e8a171d126",
+        "Unity.TextMeshPro",
+        "Unity.TextMeshPro.Editor"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
