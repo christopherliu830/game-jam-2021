@@ -15,6 +15,7 @@ public class RemovalTrigger : GameTrigger
             yield return new WaitForSeconds(2);
             c.Focus(old);
             Destroy(target);
+            yield return new WaitForSeconds(2);
         }
         yield return null;
     }

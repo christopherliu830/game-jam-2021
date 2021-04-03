@@ -1,0 +1,8 @@
+O	You really are useless, you know that?
+O	Actually, you're MORE than useless. 
+O	Only you could screw up fetching water from the well!
+Y	You fell too!
+Y	And I am NOT useless.
+O	Yeah, whatever. I'm going to find us a way out of here.
+O	You can stay here and keep crying.
+Y	Wait, don't go!

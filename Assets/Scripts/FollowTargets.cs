@@ -11,6 +11,7 @@ public class FollowTargets : MonoBehaviour
     public Stack<List<Transform>> focusStack = new Stack<List<Transform>>();
 
     private Camera _camera;
+    private float _currentSize;
 
     public void Focus(Transform t) {
         targets = new List<Transform>() { t };
@@ -23,11 +24,17 @@ public class FollowTargets : MonoBehaviour
     void Start()
     {
         _camera = GetComponent<Camera>();
+        _currentSize = _camera.orthographicSize;
+    }
+
+    public void SetSize(float size) {
+        _currentSize = size;
     }
 
     // Update is called once per frame
     void LateUpdate()
     {
+        _camera.orthographicSize = Mathf.Lerp(_camera.orthographicSize, _currentSize, 0.03f);
         Vector3 pos = Vector3.zero;
         foreach(Transform target in targets) {
             pos += target.position;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections;
 
 
+[SelectionBase]
 public class GameTriggers : MonoBehaviour {
   public List<GameTrigger> triggers;
   private bool activated = false;
@@ -20,7 +21,7 @@ public class GameTriggers : MonoBehaviour {
     foreach(var trigger in triggers) {
       yield return StartCoroutine(trigger.Activate());
     }
-    Destroy(this);
+    Destroy(gameObject);
     yield return null;
   }
 }

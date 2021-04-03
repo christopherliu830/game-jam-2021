@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 938060950e8f4fe4db565686d229b910, type: 3}
+  m_Name: Roped Up
+  m_EditorClassIdentifier: 
+  triggerDelay: 0
+  portraits:
+    m_keys:
+    - O
+    - Y
+    m_values:
+    - {fileID: 21300000, guid: 5053a7907f4244b4ba4823c9150d167b, type: 3}
+    - {fileID: 21300000, guid: 4973423d7b2a95f448318c5a1f5e6656, type: 3}
+  text: {fileID: 4900000, guid: c77318178e36ece41a1e9bd0f12ec557, type: 3}

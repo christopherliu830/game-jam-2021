@@ -6,43 +6,28 @@ using TMPro;
 
 public class DialogueManager : MonoBehaviour
 {
-    [Tooltip("Folder that stores the dialogue files -- should be located under Resources")][SerializeField] private string path_to_dialogue_files;
-    [SerializeField] private GameObject dialogue_box = null;
-    [Tooltip("Where the character's name should be displayed on the UI")][SerializeField] private TextMeshProUGUI character_name_box = null;
-    [Tooltip("Where the character's speech should be displayed on the UI")][SerializeField] private TextMeshProUGUI character_speech_box = null;
-    
-    private List<TextAsset> dialogue_files;
-    
-    // Singleton pattern
     private static DialogueManager _instance;
-    public static DialogueManager Instance {get {return _instance; }}
+    public static DialogueManager Instance => _instance;
+
+    [SerializeField] 
+    private GameObject dialogueBox = null;
+
+    [Tooltip("Where the character's name should be displayed on the UI")]
+    [SerializeField] 
+    private Image nameBox;
+    
+    [Tooltip("Where the character's speech should be displayed on the UI")]
+    [SerializeField] 
+    private TextMeshProUGUI speechBox;
+    
     
     private void Awake()
     {
         if (_instance != null & _instance != this) Destroy(this.gameObject);
         else _instance = this;
-        dialogue_files = GetDialogueFiles(path_to_dialogue_files);
+        dialogueBox.SetActive(false);
     }
-    
-    // Get files from a subfolder under Resources
-    private List<TextAsset> GetDialogueFiles (string path)
-    {
-        List<TextAsset> results = new List<TextAsset>();
-        try
-        {
-            foreach (TextAsset t in Resources.LoadAll(path, typeof(TextAsset)))
-            {
-                results.Add(t);
-            }
-            return results;
-        }
-        catch
-        {
-            Debug.LogError("DialogueManager: Failed to find " + path);
-            return results;
-        }
-    }
-    
+
     // Returns the lines contained in a file
     // Chose this method over System.IO in case we want to do a WebGL build
     private string[] GetLines (TextAsset text)
@@ -64,44 +49,44 @@ public class DialogueManager : MonoBehaviour
     {
         return line.Split(delimiter);
     }
-    
-    public IEnumerator PlayDialogue(int index)
-    {
-        if (index > dialogue_files.Count) 
-        {
-            Debug.LogError("DialogueManager: Index exceeds the length of dialogue_files");
-            yield return null;
-        }
-        string[] lines = GetLines(dialogue_files[index]);
-        DisplayDialogueBox(true);
-        foreach (string line in lines)
-        {
-            string[] tokens = TokenizeLine(line, '\t');
-            yield return StartCoroutine(UpdateDialogueBox(tokens));
-        }
-        ClearDialogueBox();
-        DisplayDialogueBox(false);
+
+    public static void Play(DialogueData data) {
+        Instance.dialogueBox.SetActive(true);
+        Instance.nameBox.enabled = true;
+        Instance.StartCoroutine(PlayDialogue(data));
     }
     
-    private IEnumerator UpdateDialogueBox(string[] tokens)
+    public static IEnumerator PlayDialogue(DialogueData data)
     {
-        do
+        yield return new WaitForSeconds(data.triggerDelay);
+        string[] lines = Instance.GetLines(data.text);
+        GameManager.DisableCharacterInputs();
+
+        foreach (string line in lines)
         {
-            character_name_box.text = tokens[0];
-            character_speech_box.text = tokens[1];
-            yield return null;
+            string[] tokens = Instance.TokenizeLine(line, '\t');
+            string name = tokens[0];
+            Sprite portrait = data.portraits[name];
+            string speech = tokens[1];
+            yield return Instance.StartCoroutine(Instance.UpdateDialogueBox(name, portrait, speech));
         }
-        while (!Input.GetKeyDown(KeyCode.Mouse0)); 
+        Instance.ClearDialogueBox();
+        Instance.dialogueBox.SetActive(false);
+        GameManager.EnableCharacterInputs();
+    }
+    
+    private IEnumerator UpdateDialogueBox(string name, Sprite portrait, string speech)
+    {
+        nameBox.sprite = portrait;
+        speechBox.text = speech;
+        yield return new WaitForSeconds(0.5f);
+        yield return new WaitWhile(() => !Input.GetKeyDown(KeyCode.Mouse0));
     }
     
     public void ClearDialogueBox()
     {
-        character_name_box.text = "";
-        character_speech_box.text = "";
+        nameBox.sprite = null;
+        speechBox.text = "";
     }
     
-    public void DisplayDialogueBox(bool display)
-    {
-        dialogue_box.SetActive(display);
-    }
 }

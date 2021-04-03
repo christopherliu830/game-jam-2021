@@ -10,6 +10,8 @@ public class GameManager : MonoBehaviour
     public static GameManager instance ;
     public Material ropeMaterial;
     public CharController[] characters;
+
+    public bool RopeOnStart = true;
     
     private int _currentCharacterIndex = 0;
 
@@ -21,11 +23,37 @@ public class GameManager : MonoBehaviour
         } else Debug.LogError("Multiple " + this);
 
         characters[_currentCharacterIndex].Focus();
-        characters[0].maxSeparation = Mathf.Infinity;
-        characters[1].maxSeparation = Mathf.Infinity;
-        characters[1].followDistance = 4f;
-        characters[0].partner = characters[1];
-        characters[1].partner = characters[0];
+        var l = characters[0];
+        var b = characters[1];
+        if (RopeOnStart) {
+            HingeJointConnect.Connect(
+                l.GetComponent<Rigidbody2D>(), 
+                b.GetComponent<Rigidbody2D>(), 20, 5)
+                .GetComponent<LineRenderer>().sharedMaterial = GameManager.instance.ropeMaterial;
+            l.maxSeparation = GameManager.ROPE_LENGTH;
+            l.followDistance = GameManager.ROPE_LENGTH;
+            b.maxSeparation = GameManager.ROPE_LENGTH;
+            b.followDistance = GameManager.ROPE_LENGTH;
+        }
+        else {
+            characters[0].maxSeparation = Mathf.Infinity;
+            characters[1].maxSeparation = Mathf.Infinity;
+            characters[1].followDistance = 4f;
+            characters[0].partner = characters[1];
+            characters[1].partner = characters[0];
+        }
+    }
+
+    public static void DisableCharacterInputs() {
+        foreach(var character in instance.characters) {
+            character.inputsEnabled = false;
+        }
+    }
+
+    public static void EnableCharacterInputs() {
+        foreach(var character in instance.characters) {
+            character.inputsEnabled = true;
+        }
     }
 
 
