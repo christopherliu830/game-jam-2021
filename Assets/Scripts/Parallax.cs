@@ -35,9 +35,9 @@ public class Parallax : MonoBehaviour
         foreach(var target in targets) {
             var scaling = (_dZ + target.localPosition.z) / _dZ;
             Vector3 p = target.position;
-            p.x = _camera.transform.position.x * scaling;
+            p.x += delta.x * scaling;
             if (xOnly) {
-                p.y = _camera.transform.position.y;
+                p.y += delta.y;
             } else {
                 p.y += delta.y * scaling;
             }
