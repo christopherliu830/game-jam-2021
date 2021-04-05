@@ -7,7 +7,7 @@ using UnityEngine;
 public class DialogueData : ScriptableObject {
     public float triggerDelay;
     public NamePortrait portraits;
-    public TextAsset text;
+    public List<TextAsset> texts;
 }
 
 [System.Serializable]

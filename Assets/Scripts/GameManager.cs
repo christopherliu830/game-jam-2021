@@ -8,10 +8,12 @@ public class GameManager : MonoBehaviour
     public static readonly float GRAVITY = -3f;
     public static float ROPE_LENGTH = 12f;
     public static GameManager instance ;
+    public static Dictionary<string, object> GlobalState = new Dictionary<string, object>();
     public Material ropeMaterial;
     public CharController[] characters;
 
     public bool RopeOnStart = true;
+    bool _inputsEnabled = true;
     
     private int _currentCharacterIndex = 0;
 
@@ -48,18 +50,21 @@ public class GameManager : MonoBehaviour
         foreach(var character in instance.characters) {
             character.inputsEnabled = false;
         }
+        instance._inputsEnabled = false;
     }
 
     public static void EnableCharacterInputs() {
         foreach(var character in instance.characters) {
             character.inputsEnabled = true;
         }
+        instance._inputsEnabled = true;
     }
 
 
     // Update is called once per frame
     void Update()
     {
+        if (!_inputsEnabled) return;
         if (Input.GetKeyDown(KeyCode.LeftShift)) {
             characters[_currentCharacterIndex].Unfocus();
             _currentCharacterIndex = (_currentCharacterIndex + 1) % characters.Length;

@@ -50,16 +50,16 @@ public class DialogueManager : MonoBehaviour
         return line.Split(delimiter);
     }
 
-    public static void Play(DialogueData data) {
-        Instance.dialogueBox.SetActive(true);
-        Instance.nameBox.enabled = true;
-        Instance.StartCoroutine(PlayDialogue(data));
+    public static void Play(DialogueData data, int sceneNo) {
+        Instance.StartCoroutine(PlayDialogue(data, sceneNo));
     }
     
-    public static IEnumerator PlayDialogue(DialogueData data)
+    public static IEnumerator PlayDialogue(DialogueData data, int scene)
     {
+        Instance.dialogueBox.SetActive(true);
+        Instance.nameBox.enabled = true;
         yield return new WaitForSeconds(data.triggerDelay);
-        string[] lines = Instance.GetLines(data.text);
+        string[] lines = Instance.GetLines(data.texts[scene-1]);
         GameManager.DisableCharacterInputs();
 
         foreach (string line in lines)

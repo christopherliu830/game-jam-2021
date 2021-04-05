@@ -1,0 +1,8 @@
+O	This cliff looks a little too big to scale...
+Y	Are we going to die?
+Y	I don't want to die! I don't want to die!
+O	Could you be quiet for a second? I'm trying to think! 
+Y	<i>sniff</i>
+O	...I have an idea.
+Y	...Okay...
+O	Hold still for a second.

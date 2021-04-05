@@ -11,6 +11,7 @@ public class HingeJointConnect : MonoBehaviour
     public static HingeJointConnect Connect(Rigidbody2D a, Rigidbody2D b, int subdivisions, int length) {
         List<HingeJoint2D> joints = new List<HingeJoint2D>(subdivisions);
         GameObject line = new GameObject("Rope");
+        line.layer = 6;
 
         for(int i = 0; i < subdivisions; i++) {
 

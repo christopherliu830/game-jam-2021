@@ -1,0 +1,6 @@
+Y	Oswald?
+O	Yes?
+Y	Could you carry me? I'm scared...
+O	...Mother would be disappointed in you.
+Y	But I'm tired!
+O	...Fine. Come here.

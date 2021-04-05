@@ -1,0 +1,5 @@
+O	When we get back... I'll let you join me in archery practice.
+O	...If you want.
+Y	Really?
+Y	What will Father say?
+O	I'll figure something out.

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Animancer;
 
 public class CharController : MonoBehaviour
 {
@@ -24,18 +25,33 @@ public class CharController : MonoBehaviour
     public float speedDecayRate = 0.9f;
     public LayerMask blockedBy;
 
+    [Header("Animations")]
+    public AnimationClip runClip;
+    public AnimationClip idleClip;
+    public AnimationClip limpClip;
+    public AnimationClip jumpRiseClip;
+    public AnimationClip jumpFallClip;
+
+    [Header("Audio")]
+    public AudioClip hitGroundClip;
+    public AudioClip ropePullClip;
+    public AudioClip throwClip;
+
     private Vector2 _velocity;
     private Vector2 _position;
 
     private Rigidbody2D _rb;
     private BoxCollider2D _collider;
-
+    private AnimancerComponent _animancer;
+    private AudioSource _audioSource;
     private bool _spacePressed;
     private bool _focused = false;
     private bool _thrown = false;
+    private bool _updating = true;
     private int _jumpFramesLeft;
     private int _climbFramesLeft;
     private float _currentSeparation;
+    private bool _ropeSoundPlayed = false;
     private ContactFilter2D _filter = new ContactFilter2D();
     private RaycastHit2D[] _hits = new RaycastHit2D[4];
     private ContactPoint2D[] _contacts = new ContactPoint2D[4];
@@ -50,6 +66,8 @@ public class CharController : MonoBehaviour
         _filter.SetLayerMask(blockedBy);
         sprite = GetComponentInChildren<SpriteRenderer>();
         _currentSeparation = GameManager.ROPE_LENGTH;
+        _animancer = GetComponentInChildren<AnimancerComponent>();
+        _audioSource = GetComponent<AudioSource>();
     }
 
     void Update() {
@@ -68,17 +86,48 @@ public class CharController : MonoBehaviour
                     partner.Throw((pos - Position).normalized);
                 } 
             }
+            if (Input.GetMouseButtonDown(1) && IsGrounded()) {
+                _audioSource.PlayOneShot(ropePullClip);
+            }
         }
     }
+
+    void Animate() {
+        if (IsGrounded()) {
+            if (Mathf.Abs(_velocity.x) > 0.1f) {
+                _animancer.Play(runClip);
+            }
+            else {
+                _animancer.Play(idleClip);
+            }
+        } 
+        // If at max separation
+        else if ( Mathf.Abs(Vector2.Distance(Position, partner.Position) - _currentSeparation) < 1.0f &&
+            Position.y < partner.Position.y) {
+            if (_position.x < partner.Position.x) sprite.flipX = true; 
+            else sprite.flipX = false;
+            _animancer.Play(limpClip);
+        } 
+        else { // Airborne and not being pulled
+            if (_velocity.y > 0) _animancer.Play(jumpRiseClip, 0);
+            else _animancer.Play(jumpFallClip, 0);
+        }
+    }
+
     void FixedUpdate()
     {
+        if (!_updating) return;
+
+        var wasGrounded = IsGrounded(); 
         float dx = 0, dy = 0;
         bool space = false;
         _velocity.y += GameManager.GRAVITY * Time.fixedDeltaTime;
         if (_velocity.y < -1) _velocity.y = -1; // Cap fall speed
 
+        if (_focused) {
+            _currentSeparation = maxSeparation;
+        }
         if (inputsEnabled) { 
-
             // If the right mouse isn't held, increase the separation distance until max
             if (!Input.GetMouseButton(1)) {
                 if (_currentSeparation < maxSeparation) {
@@ -100,6 +149,7 @@ public class CharController : MonoBehaviour
             } else if (Input.GetMouseButton(0)) { // I'm grabbed 
                 if (Vector3.Distance(partner.Position, _position) < 1.0f) {
                     _position = MoveWithCollision(_position, partner.Position - _position);
+                    Debug.DrawLine(_position, partner.Position, Color.green, 1, false);
                     _rb.MovePosition(_position);
                     Velocity = Vector2.zero;
                     return;
@@ -111,40 +161,43 @@ public class CharController : MonoBehaviour
         }
 
         Move(dx, dy, space);
+        Animate();
+        if (!wasGrounded && IsGrounded()) {
+            _audioSource.PlayOneShot(hitGroundClip);
+        }
     }
 
     public void PullTowards(Vector2 to) {
         Vector2 vel;
         float dx = Input.GetAxisRaw("Horizontal");
-        if (IsGrounded()) {
+        float distX = Mathf.Abs(to.x - Position.x);
+        // Debug.Log(IsGrounded() + " " + IsOnWall() + " " + IsOnLedge() + " " + IsOnCeiling());
+        if (IsGrounded() && distX > 1.0f ) {
             dx = 0;
             bool space = false;
             // AI Move to partner
-            if (Mathf.Abs(to.x - Position.x) > 0.9f) {
-                dx = Mathf.Sign(to.x - Position.x);
-                space = IsOnWall() != 0;
-            } else {
-                space = (to.y - Position.y) > 1f;
-                if (space) _currentSeparation = Vector2.Distance(Position, partner.Position);
-            }
+            dx = Mathf.Sign(to.x - Position.x);
+            space = IsOnWall() != 0;
             Move(dx, 0, space);
             return;
         }
-        if (IsOnWall() == 0) {
-            _currentSeparation -= 0.1f;
+        if (IsOnCeiling() && Position.y < partner.Position.y) {
+            
             vel = _velocity + Vector2.right * dx * 0.05f;
-        } else if (IsOnCeiling()) { 
+            _currentSeparation = Mathf.Min(Vector2.Distance(Position, partner.Position) + 0.5f, maxSeparation);
+            vel.x = Mathf.Clamp(vel.x, -maxSpeed, maxSpeed);
+            vel.y = 1;
+        }
+        else if (IsOnWall() == 0) {
+            _currentSeparation = Mathf.Max(_currentSeparation - 0.2f, 0.5f);
             vel = _velocity + Vector2.right * dx * 0.05f;
-            _currentSeparation = Mathf.Min(Vector2.Distance(Position, partner.Position), maxSeparation);
-            vel.x = Mathf.Min(0.5f, vel.x);
         } else { // Pull me up the wall
             var dir = to.x - Position.x;
-            if (dx != 0) dir = dx;
-            vel = new Vector2(dir, Mathf.Sign(to.y - Position.y)) / 20f; 
+            vel = new Vector2(dir, Mathf.Sign(to.y - Position.y) * 1.5f) / 20f; 
             if (IsOnLedge() != 0) { 
                 vel += Vector2.up / 3f; 
             }
-            _currentSeparation = Vector2.Distance(Position, partner.Position);
+            _currentSeparation = Mathf.Min(Vector2.Distance(Position, partner.Position) + 0.5f, maxSeparation);
         } 
         _velocity = ClampVelocity(vel, _currentSeparation);
         _position = MoveWithCollision(_position, _velocity);
@@ -152,6 +205,7 @@ public class CharController : MonoBehaviour
         if (dx < 0) sprite.flipX = true;
         else if (dx == 0 && _velocity.x < 0) sprite.flipX = true;
         else sprite.flipX = false;
+        Animate();
     }
 
     public void Move(float dx, float dy, bool space) {
@@ -208,21 +262,28 @@ public class CharController : MonoBehaviour
     }
 
     public bool IsGrounded() {
-        Vector2 size = new Vector2(_collider.size.x / 5f, _collider.size.y);
-        RaycastHit2D hit = Physics2D.CapsuleCast(_position, size, CapsuleDirection2D.Vertical, 0, Vector2.down, 0.1f, blockedBy);
+        Vector2 size = new Vector2(_collider.size.x * .75f, _collider.size.y * .5f);
+        var offset = new Vector2(0, -_collider.size.y * .25f);
+        var extent = _collider.bounds.extents.y;
+        RaycastHit2D hit = Physics2D.BoxCast(_position + offset, size, 0, Vector2.down, 0.075f, blockedBy);
         return hit.collider != null;
     }
 
     public void Throw(Vector2 velocity) {
         _thrown = true;
         _velocity = velocity;
+        _audioSource.PlayOneShot(throwClip, 0.5f);
     }
 
     public int IsOnWall() {
-        RaycastHit2D hit = Physics2D.BoxCast(_position + new Vector2(-0.1f, 0.5f), _collider.size, 0, Vector2.left, Mathf.Epsilon, blockedBy);
+        var offset = new Vector2(-_collider.size.x * .35f, 0.0f);
+        var size = _collider.size;
+        size.y *= .6f;
+        RaycastHit2D hit = Physics2D.BoxCast(_position + offset, size, 0, Vector2.left, 0.5f, blockedBy);
         if (hit.collider != null) return -1;
 
-        hit = Physics2D.BoxCast(_position + new Vector2(0.1f, 0.5f), _collider.size, 0, Vector2.right, Mathf.Epsilon, blockedBy);
+        offset = new Vector2(_collider.size.x * .35f, 0.05f);
+        hit = Physics2D.BoxCast(_position + offset, size, 0, Vector2.right, 0.5f, blockedBy);
         if (hit.collider != null) return 1;
 
         return 0;
@@ -230,7 +291,7 @@ public class CharController : MonoBehaviour
 
     public bool IsOnCeiling() {
         var size = _collider.size;
-        size.x *= 0.9f;
+        size.x *= 0.4f;
         RaycastHit2D hit = Physics2D.BoxCast(_position, size, 0, Vector2.up, 0.1f, blockedBy);
         return hit.collider != null;
     }
@@ -238,7 +299,7 @@ public class CharController : MonoBehaviour
     public int IsOnLedge() {
         var dir = IsOnWall();
         if (dir == 0) return 0;
-        Vector2 offset = new Vector2(0, _collider.size.y + 0.1f);
+        Vector2 offset = new Vector2(0, _collider.bounds.extents.y + 0.1f);
         var extent = _collider.bounds.extents.x;
         RaycastHit2D hit = Physics2D.Raycast(_position + offset, Vector2.left, extent + 1f, blockedBy);
         if (dir == -1 && hit.collider == null) return -1;
@@ -255,17 +316,18 @@ public class CharController : MonoBehaviour
         float dx = 0;
         bool space =  false;
 
-        if (Mathf.Abs(Position.x - partner.Position.x) > followDistance * 0.75f) {
+        if (Vector2.Distance(Position, partner.Position) > followDistance * 0.9f && partner.IsGrounded()) {
             dx = Mathf.Sign(partner.Position.x - Position.x);
-            space = IsOnLedge() != 0 && partner.IsGrounded() && partner.Position.y - Position.y > 0.75f ||
+            space = IsOnLedge() != 0 && partner.IsGrounded() ||
                     partner.Position.y - Position.y > 10f;
         }
-        if (Vector2.Distance(Position, partner.Position) > followDistance * .95f) {
-            if (IsGrounded() && partner.IsGrounded()) {
-                dx = Mathf.Sign(partner.Position.x - Position.x);
-                space = true;
-            }
-        }
+        // if (Vector2.Distance(Position, partner.Position) > followDistance * .95f) {
+        //     if ((IsGrounded() || IsOnLedge() != 0) && partner.IsGrounded()) {
+        //         Debug.Log("fdasfdsaf");
+        //         dx = Mathf.Sign(partner.Position.x - Position.x);
+        //         space = true;
+        //     }
+        // }
 
         // Attempt jump if partner is higher up
         return (dx, space);
@@ -273,13 +335,18 @@ public class CharController : MonoBehaviour
 
     public IEnumerator MoveTo(Vector2 position, float timeout) {
         float timer = 0;
+        _updating = false;
         while (timer < timeout) {
             timer += Time.fixedDeltaTime;
             float dx = Mathf.Sign(position.x - Position.x);
-            bool space = IsOnLedge() != 0 && IsGrounded() && position.y - Position.y > 0.75f;
+            bool space = position.y > Position.y;
+            _velocity.y += GameManager.GRAVITY * Time.fixedDeltaTime;
+            if (_velocity.y < -1) _velocity.y = -1; // Cap fall speed
             Move(dx, 0, space);
+            Animate();
             yield return new WaitForFixedUpdate();
         }
+        _updating = true;
         yield return null;
     }
 
@@ -301,24 +368,26 @@ public class CharController : MonoBehaviour
     Vector2 MoveWithCollision(Vector2 position, Vector2 dir) {
         Vector2 pos = new Vector2(position.x, position.y);
 
-        RaycastHit2D hit = Physics2D.CapsuleCast(pos, _collider.size, CapsuleDirection2D.Vertical, 0, dir, dir.magnitude, blockedBy);
+        // RaycastHit2D hit = Physics2D.CapsuleCast(pos, _collider.size, CapsuleDirection2D.Vertical, 0, dir, dir.magnitude, blockedBy);
+        RaycastHit2D hit = Physics2D.BoxCast(pos, _collider.size, 0, dir, dir.magnitude, blockedBy);
         if (hit.collider == null) { return position + dir; }
         var dot = Vector2.Dot(dir, hit.normal);
 
         int i = 0; // Failsafe :)
         while (hit.collider != null && i < 1000) {
-            hit = Physics2D.CapsuleCast(pos, _collider.size, CapsuleDirection2D.Vertical, 0, dir, dir.magnitude, blockedBy);
+            // hit = Physics2D.CapsuleCast(pos, _collider.size, CapsuleDirection2D.Vertical, 0, dir, dir.magnitude, blockedBy);
+            hit = Physics2D.BoxCast(pos, _collider.size, 0, dir, dir.magnitude, blockedBy);
             if (hit.collider == null) break;
 
-            Debug.DrawRay(hit.point, hit.normal, Color.red, 1, false);
             var d = Vector2.Dot(Vector2.up, hit.normal);
             if (d > 0.8f) hit.normal = Vector2.up;
-            else if (Mathf.Abs(d) < 0.4f) {
+            else if (Mathf.Abs(d) < 0.3f) {
                 if (hit.normal.x < 0) hit.normal = Vector2.left;
                 else hit.normal = Vector2.right;
             }
+            Debug.DrawRay(hit.point, hit.normal, Color.red, 1, false);
             
-            dir += hit.normal * 0.035f;
+            dir += hit.normal * 0.01f;
             i++;
         } 
         pos += dir;

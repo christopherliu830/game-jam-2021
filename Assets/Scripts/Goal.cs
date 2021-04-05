@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+[SelectionBase]
 public class Goal : MonoBehaviour
 {
     public int nextLevel;

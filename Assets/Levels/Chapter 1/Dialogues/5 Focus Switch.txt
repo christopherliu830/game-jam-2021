@@ -1,0 +1,6 @@
+O	...We're stuck.
+Y	I think I see something down there!
+Y	Maybe the path keeps going?
+O	STOP! What in the Seven Hells do you think you're doing? You're going to get yourself killed! 
+Y	It's okay, we have the rope! If I fall you can pull me back up.
+O	...I guess you're right. Okay, you go while I wait here.

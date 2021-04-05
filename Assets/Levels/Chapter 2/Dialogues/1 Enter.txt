@@ -1,0 +1,4 @@
+Y	This place looks...different.
+Y	We're still in the well, right?
+O	Did you hit your head on the way down? Of course we are.
+O	Anyways, it's not like we can turn back. Mother and Father are waiting.

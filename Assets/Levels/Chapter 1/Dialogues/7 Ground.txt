@@ -1,0 +1,4 @@
+Y	<i>AAAAH!</i>
+O	Arlo? What did you do!?
+Y	I don't know! I touched something and it made a noise!
+O	I'm pulling you back up. Whatever you did, I think it opened up the path!

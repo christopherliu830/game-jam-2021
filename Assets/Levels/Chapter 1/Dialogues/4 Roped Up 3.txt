@@ -1,0 +1,5 @@
+O	Tie this rope around you so you don't get lost.
+O	If it's too high, I can pull you up.
+O	Grandma was right about the water, it really is shallow.
+O	Come on, let's find a way out of here.
+Y	Aaah!

@@ -9,9 +9,11 @@ Shader "Unlit/White Only"
     }
     SubShader
     {
-        Tags { "RenderType"="Transparent" }
+        Tags { "RenderType" = "Transparent" }
         LOD 200
         Cull off
+        ZWrite Off
+        Blend SrcAlpha OneMinusSrcAlpha
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
@@ -40,7 +42,8 @@ Shader "Unlit/White Only"
 
         fixed4 LightingWhiteOnly(SurfaceOutput s, fixed3 lightDir, fixed atten) {
             fixed4 c;
-            c.rgb = s.Alpha;
+            float value = step(0.1, c.a);
+            c.rgb = s.Albedo;
             c.a = s.Alpha;
             return c;
         }
@@ -49,10 +52,16 @@ Shader "Unlit/White Only"
         {
             // Albedo comes from a texture tinted by color
             fixed4 c = tex2D (_MainTex, IN.uv_MainTex) * _Color;
-            float value = step(0.2, c.a);
-            o.Albedo = fixed3(0, 0, 0);
+
+            // o.Albedo = fixed3(0, 0, 0);
+            o.Albedo = fixed3(1,1,1);
             // Metallic and smoothness come from slider variables
-            o.Alpha = value;
+            o.Alpha = c.a;
+
+            if (c.a < 0.1) discard;
+            #ifdef UNITY_UI_ALPHACLIP
+            clip(value);
+            #endif
         }
         ENDCG
     }

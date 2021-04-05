@@ -1,0 +1,6 @@
+Y	Waaaaah!
+Y	Why would you do that!?
+O	Arlo, are you alright?
+Y	NO? You just flung me like a ball!
+O	You're fine. Now could you pull me up?
+Y	Okay.

@@ -1,0 +1,4 @@
+Y	This wall is too high!
+Y	Help me!
+O	You really can't do anything, can you...
+O	Fine.
